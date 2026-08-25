@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Portfolio — Phase 1</title>
-<meta name="description" content="Multidisciplinary creative developer portfolio — WebGL project showcase." />
+<title>"EMRYS" - Imagined</title>
+<meta name="description" content="WebGL project showcase." />
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -54,6 +54,70 @@
     height: 100dvh;
     display: block;
   }
+
+  /* ---------- one-page scroller (hero → work) ---------- */
+  .scroll {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+  }
+  .scroll::-webkit-scrollbar { display: none; }
+  body.page-open .scroll { overflow: hidden; }
+
+  .hero, .work {
+    height: 100dvh;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  /* opaque — it covers the canvas until it scrolls away */
+  .hero {
+    position: relative;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 0 var(--margin);
+    text-align: center;
+  }
+
+  /* transparent — the WebGL stage shows through */
+  .work { background: transparent; }
+
+  .scroll-cue {
+    /* centred with left/right, not translateX — .rv owns `transform` */
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: clamp(20px, 4vh, 40px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-size: var(--label);
+    color: var(--dim);
+    transition: opacity 0.4s ease;
+  }
+  .scroll-cue .bar {
+    width: 1px;
+    height: 34px;
+    background: currentColor;
+    transform-origin: top center;
+    animation: cue 2.4s cubic-bezier(0.76, 0, 0.24, 1) infinite;
+  }
+  @keyframes cue {
+    0%   { transform: scaleY(0); opacity: 1; }
+    45%  { transform: scaleY(1); opacity: 1; }
+    100% { transform: scaleY(1); opacity: 0; }
+  }
+  body.at-work .scroll-cue { opacity: 0; }
 
   /* ---------- hover swap (clip-path text roll) ---------- */
   .swap {
@@ -383,10 +447,17 @@
   }
   .contact-line a:hover { border-color: #fff; }
 
-  /* hide slider UI while a page or menu covers it */
+  /* slider UI only exists once the hero has scrolled away */
   .project-details, .counter, .view-toggle {
     transition: opacity 0.4s ease;
+    opacity: 0;
   }
+  body.at-work .project-details,
+  body.at-work .counter,
+  body.at-work .view-toggle { opacity: 1; }
+  body:not(.at-work) .view-toggle { pointer-events: none; }
+
+  /* hide slider UI while a page or menu covers it */
   body.page-open .project-details,
   body.page-open .counter,
   body.page-open .view-toggle,
@@ -465,17 +536,6 @@
     -webkit-text-fill-color: transparent;
   }
 
-  /* ---------- home page ---------- */
-  .page-home {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    padding: 0;
-    overflow: visible;
-  }
-
   .painting-caption {
     font-size: var(--label);
     color: var(--dim);
@@ -502,12 +562,25 @@
 </head>
 <body>
 
-  <!-- WebGL stage -->
+  <!-- WebGL stage (sits behind the scroller) -->
   <canvas class="stage js-canvas" aria-label="Project showcase"></canvas>
+
+  <!-- One page: EMRYS title, then the project showcase below it -->
+  <main class="scroll js-scroll">
+    <section class="hero" aria-label="EMRYS">
+      <div class="emrys-wordmark rv">"EMRYS"</div>
+      <p class="painting-caption js-painting-caption rv d1">--</p>
+      <div class="scroll-cue rv d2" aria-hidden="true">
+        <span class="bar"></span>
+        <span>Scroll</span>
+      </div>
+    </section>
+    <section class="work js-work" aria-label="Selected work"></section>
+  </main>
 
   <!-- Header -->
   <header>
-    <a href="#home" class="wordmark swap rv" aria-label="Home">
+    <a href="#top" class="wordmark swap rv js-to-top" aria-label="Back to top">
       <span class="swap-hover" aria-hidden="true">"EMRYS"</span>
       <span class="swap-text">"EMRYS"</span>
     </a>
@@ -558,12 +631,6 @@
   <div class="grid-view js-grid-view" role="dialog" aria-label="All projects">
     <div class="grid js-grid"></div>
   </div>
-
-  <!-- Home page -->
-  <section class="page page-home js-page" id="page-home" data-page="home" aria-label="Home">
-    <div class="emrys-wordmark">"EMRYS"</div>
-    <p class="painting-caption js-painting-caption">--</p>
-  </section>
 
   <!-- About page -->
   <section class="page js-page" id="page-about" data-page="about" aria-label="About">
@@ -960,17 +1027,47 @@ const wrap = (i) => (i + CONFIG.projects.length) % CONFIG.projects.length;
 const next = () => goTo(wrap(current + 1), 1);
 const prev = () => goTo(wrap(current - 1), -1);
 
+/* =====================================================================
+   SCROLL HANDOFF — the hero scrolls natively; once the work section
+   fills the viewport the same gesture drives the slider instead.
+   Scrolling up from the first project hands control back to the page.
+   ===================================================================== */
+const scroller = document.querySelector('.js-scroll');
+const workSection = document.querySelector('.js-work');
+
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+scroller.scrollTop = 0;
+
+/* true once the work section is snapped to the viewport */
+const atWork = () => scroller.scrollTop >= workSection.offsetTop - 4;
+
+scroller.addEventListener('scroll', () => {
+  document.body.classList.toggle('at-work', scroller.scrollTop > window.innerHeight * 0.4);
+  /* the page is still moving — drop any wheel delta so momentum from the
+     hero scroll doesn't spill over into a slide change on arrival */
+  wheelAcc = 0;
+}, { passive: true });
+
+document.querySelector('.js-to-top').addEventListener('click', (e) => {
+  e.preventDefault();
+  if (activePage) location.hash = '#work';
+  scroller.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+});
+
 /* wheel */
 let wheelAcc = 0;
 window.addEventListener('wheel', (e) => {
   if (gridOpen || activePage) return;
+  /* hero scrolls natively; so does scrolling up off the first project */
+  if (!atWork() || (e.deltaY < 0 && current === 0)) { wheelAcc = 0; return; }
+  e.preventDefault();
   wheelAcc += e.deltaY;
   if (Math.abs(wheelAcc) > 90 && !animating) {
     wheelAcc > 0 ? next() : prev();
     wheelAcc = 0;
   }
   if (animating) wheelAcc = 0;
-}, { passive: true });
+}, { passive: false });
 
 /* touch */
 let touchY = null;
@@ -978,15 +1075,18 @@ window.addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; },
 window.addEventListener('touchmove', (e) => {
   if (touchY === null || gridOpen || activePage) return;
   const dy = touchY - e.touches[0].clientY;
+  if (!atWork()) return;
+  if (dy < 0 && current === 0) return;
+  e.preventDefault();
   if (Math.abs(dy) > 55 && !animating) {
     dy > 0 ? next() : prev();
     touchY = e.touches[0].clientY;
   }
-}, { passive: true });
+}, { passive: false });
 
 /* keys */
 window.addEventListener('keydown', (e) => {
-  if (!activePage) {
+  if (!activePage && atWork()) {
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next();
     if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') prev();
   }
@@ -1082,7 +1182,7 @@ mobileMenu.querySelectorAll('a').forEach((a) =>
 })();
 
 /* =====================================================================
-   ROUTER — hash-based page views (#home / #about)
+   ROUTER — hash-based page overlay (#about)
    ===================================================================== */
 const pages = document.querySelectorAll('.js-page');
 const navLinks = document.querySelectorAll('nav.desktop-nav a, .mobile-menu a');
@@ -1090,7 +1190,7 @@ let activePage = null;
 
 function route() {
   const hash = (location.hash || '#work').replace('#', '');
-  const target = ['about', 'home'].includes(hash) ? hash : null;
+  const target = hash === 'about' ? hash : null;
 
   if (gridOpen && target) toggleGrid(false);
   if (timeOpen && target) { timeOpen = false; timeDetail.classList.remove('show'); }
