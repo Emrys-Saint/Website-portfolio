@@ -696,19 +696,22 @@ const CONFIG = {
   name: 'EMRYS',
 
   /* Where the painting files are served from.
-     '' serves them from alongside this page (the old behaviour).
-     A GitHub Pages origin keeps ~32 MB of artwork out of the Cloudflare
-     deploy and off its per-file limits.
+     '' (the default) serves them from alongside this page.
 
-       https://USER.github.io/REPO/        <- repo with a Pages site
-       https://USER.github.io/             <- USER.github.io user site
+     Set a GitHub Pages origin to keep ~32 MB of artwork out of the
+     Cloudflare deploy and off its 25 MiB per-file limit:
 
-     Trailing slash required. The repo must contain the same relative
-     paths used below, i.e. img/inspiration/<file>.jpg plus
-     img/inspiration/manifest.json.
+       assetBase: 'https://USER.github.io/REPO/'   <- repo with a Pages site
+       assetBase: 'https://USER.github.io/'        <- USER.github.io user site
+
+     Trailing slash required. The repo must mirror the paths used below,
+     i.e. img/inspiration/<file>.jpg plus img/inspiration/manifest.json.
      GitHub Pages sends Access-Control-Allow-Origin: *, so the manifest
-     fetch works cross-origin. */
-  assetBase: 'https://USER.github.io/REPO/',
+     fetch works cross-origin.
+
+     If a remote file 404s, the loader retries the same path locally, so a
+     half-finished migration degrades instead of blanking the wordmark. */
+  assetBase: '',
 
   wordmarkImages: [
     { img: 'img/inspiration/plains-of-heaven.jpg', title: 'The Plains of Heaven', artist: 'John Martin', year: '1851–53' },
@@ -750,11 +753,15 @@ const CONFIG = {
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* resolve a repo-relative asset path against CONFIG.assetBase, encoded so
-   accented and parenthesised filenames survive a real HTTP host */
-function assetUrl(path) {
-  const base = CONFIG.assetBase ? CONFIG.assetBase.replace(/\/+$/, '') + '/' : '';
-  return encodeURI(base + path);
+/* Candidate URLs for a repo-relative asset, best first: the configured
+   remote, then the local copy. encodeURI so accented and parenthesised
+   filenames survive a real HTTP host. Returning both means a wrong or
+   not-yet-live assetBase falls back to local rather than blanking out. */
+function assetUrls(path) {
+  const local = encodeURI(path);
+  if (!CONFIG.assetBase) return [local];
+  const base = CONFIG.assetBase.replace(/\/+$/, '') + '/';
+  return [encodeURI(base + path), local];
 }
 
 function loadImage(src) {
@@ -772,23 +779,26 @@ function loadImage(src) {
    without editing this file — CONFIG.wordmarkImages is the fallback list. */
 (async function pickWordmark() {
   let images = CONFIG.wordmarkImages;
-  try {
-    const res = await fetch(assetUrl('img/inspiration/manifest.json'), { cache: 'no-cache' });
-    if (!res.ok) throw new Error(res.statusText);
-    const data = await res.json();
-    if (Array.isArray(data) && data.length) images = data;
-  } catch {}
+  for (const url of assetUrls('img/inspiration/manifest.json')) {
+    try {
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      if (Array.isArray(data) && data.length) { images = data; break; }
+    } catch {}
+  }
 
   /* shuffle, then take the first painting that actually decodes — one
      missing file on the host must not leave the wordmark blank */
   const shuffled = images.slice().sort(() => Math.random() - 0.5);
 
   for (const painting of shuffled) {
-    const src = assetUrl(painting.img);
-    try {
-      await loadImage(src);
-    } catch (err) {
-      console.warn('[wordmark] skipping', painting.img, err.message);
+    let src = null;
+    for (const url of assetUrls(painting.img)) {
+      try { await loadImage(url); src = url; break; } catch {}
+    }
+    if (!src) {
+      console.warn('[wordmark] skipping', painting.img);
       continue;
     }
     document.documentElement.style.setProperty('--wordmark-img', `url("${src}")`);
