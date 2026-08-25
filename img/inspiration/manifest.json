@@ -1,0 +1,56 @@
+[
+  {
+    "img": "images/inspiration/Belshazzar_Feast_john_martin.jpg",
+    "title": "Belshazzar's Feast",
+    "artist": "John Martin",
+    "year": "1820"
+  },
+  {
+    "img": "images/inspiration/Caravaggio_-_Giuditta_e_Oloferne_(ca._1599).jpg",
+    "title": "Judith Beheading Holofernes",
+    "artist": "Caravaggio",
+    "year": "c. 1599"
+  },
+  {
+    "img": "images/inspiration/Claude_Monet_-_Reflections_of_Clouds_on_the_Water-Lily_Pond.jpg",
+    "title": "Reflections of Clouds on the Water-Lily Pond",
+    "artist": "Claude Monet",
+    "year": "1920"
+  },
+  {
+    "img": "images/inspiration/Destruction_of_Pompeii_and_Herculaneum.jpg",
+    "title": "The Destruction of Pompeii and Herculaneum",
+    "artist": "John Martin",
+    "year": "1822"
+  },
+  {
+    "img": "images/inspiration/Paolo_Veronese_008.jpg",
+    "title": "The Wedding Feast at Cana",
+    "artist": "Paolo Veronese",
+    "year": "1563"
+  },
+  {
+    "img": "images/inspiration/Saint_Jerome_Writing-Caravaggio_(1605-6).jpg",
+    "title": "Saint Jerome Writing",
+    "artist": "Caravaggio",
+    "year": "1605–06"
+  },
+  {
+    "img": "images/inspiration/great-day-of-his-wrath.jpg",
+    "title": "The Great Day of His Wrath",
+    "artist": "John Martin",
+    "year": "1851–53"
+  },
+  {
+    "img": "images/inspiration/last-judgement.jpg",
+    "title": "The Last Judgement",
+    "artist": "John Martin",
+    "year": "1853"
+  },
+  {
+    "img": "images/inspiration/plains-of-heaven.jpg",
+    "title": "The Plains of Heaven",
+    "artist": "John Martin",
+    "year": "1851–53"
+  }
+]
