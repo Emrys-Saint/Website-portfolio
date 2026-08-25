@@ -8,7 +8,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Archivo+Black&family=Big+Shoulders+Display:wght@700&family=Oswald:wght@700&family=UnifrakturMaguntia&family=Amita:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Archivo+Black&family=Big+Shoulders+Display:wght@700&family=Oswald:wght@700&family=UnifrakturMaguntia&family=Amita:wg[...]"
 
 <style>
   :root {
@@ -710,7 +710,7 @@ const CONFIG = {
      fetch works cross-origin.
 
      If a remote file 404s, the loader retries the same path locally, so a
-     half-finished migration degrades instead of blanking the wordmark. */
+     half-finished migration degrades instead of blanking out the wordmark. */
   assetBase: '',
 
   wordmarkImages: [
@@ -728,7 +728,7 @@ const CONFIG = {
   about: {
     headline: 'Creative developer working across design, motion & code',
     paragraphs: [
-      'EMRYS is an independent multidisciplinary creative building digital experiences for the web. Equal parts designer and engineer — the kind of work where the idea, the motion and the implementation come from the same pair of hands.',
+      'EMRYS is an independent multidisciplinary creative building digital experiences for the web. Equal parts designer and engineer — the kind of work where the idea, the motion and the implementa[...]'
       'Currently collaborating with studios, startups and independents on portfolio sites, campaign pages and interactive experiences. Available for select projects.',
     ],
     portrait: 'https://picsum.photos/seed/portrait/900/1125',
@@ -802,9 +802,22 @@ function loadImage(src) {
       continue;
     }
     document.documentElement.style.setProperty('--wordmark-img', `url("${src}")`);
-    const caption = [painting.title, [painting.artist, painting.year].filter(Boolean).join(', ')]
-      .filter(Boolean)
-      .join(' — ');
+
+    // Explicit fallback: directly set background on wordmark elements
+    // for browsers that don't pick up the CSS custom property or background-clip.
+    try {
+      document.querySelectorAll('.emrys-wordmark').forEach((el) => {
+        el.style.backgroundImage = `url("${src}")`;
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+        el.style.webkitBackgroundClip = 'text';
+        el.style.backgroundClip = 'text';
+        el.style.color = 'transparent';
+        el.style.webkitTextFillColor = 'transparent';
+      });
+    } catch (e) { /* ignore in very old browsers */ }
+
+    const caption = [painting.title, [painting.artist, painting.year].filter(Boolean).join(', ')].filter(Boolean).join(' — ');
     document.querySelectorAll('.js-painting-caption').forEach((el) => { el.textContent = caption; });
     document.body.classList.add('wordmark-ready');
     return;
@@ -998,289 +1011,4 @@ function resize() {
   camera.left = -w / 2; camera.right = w / 2;
   camera.top = h / 2; camera.bottom = -h / 2;
   camera.updateProjectionMatrix();
-  const { pw, ph } = planeSize();
-  plane.scale.set(pw, ph, 1);
-  uniforms.uPlane.value.set(pw, ph);
-}
-window.addEventListener('resize', resize);
-resize();
-
-/* ---- textures ---- */
-const textures = [];
-const intro = document.querySelector('.js-intro');
-const introNum = document.querySelector('.js-intro-num');
-
-const manager = new THREE.LoadingManager();
-const loader = new THREE.TextureLoader(manager);
-loader.setCrossOrigin('anonymous');
-
-const shown = { v: 0 };
-manager.onProgress = (_url, loaded, total) => {
-  gsap.to(shown, {
-    v: Math.round((loaded / total) * 100),
-    duration: 0.4,
-    onUpdate: () => { introNum.textContent = Math.round(shown.v); },
-  });
-};
-
-CONFIG.projects.forEach((p, i) => {
-  textures[i] = loader.load(p.img, (t) => {
-    t.minFilter = THREE.LinearFilter;
-    t.generateMipmaps = false;
-  });
-});
-
-manager.onLoad = () => {
-  uniforms.uTexA.value = textures[0];
-  uniforms.uTexB.value = textures[0];
-  const img0 = textures[0].image;
-  uniforms.uResA.value.set(img0.width, img0.height);
-  uniforms.uResB.value.set(img0.width, img0.height);
-
-  gsap.to(shown, {
-    v: 100,
-    duration: 0.3,
-    onUpdate: () => { introNum.textContent = Math.round(shown.v); },
-    onComplete: () => {
-      setTimeout(() => {
-        intro.classList.add('done');
-        document.body.classList.add('ready');
-      }, reduceMotion ? 0 : 250);
-    },
-  });
-};
-
-manager.onError = (url) => {
-  console.warn('Failed to load', url);
-  intro.classList.add('done');
-  document.body.classList.add('ready');
-};
-
-/* ---- slide logic ---- */
-let current = 0;
-let animating = false;
-
-function setRes(uniform, tex) {
-  if (tex.image) uniform.value.set(tex.image.width, tex.image.height);
-}
-
-function goTo(next, dir) {
-  if (animating || next === current) return;
-  animating = true;
-
-  uniforms.uTexA.value = textures[current];
-  setRes(uniforms.uResA, textures[current]);
-  uniforms.uTexB.value = textures[next];
-  setRes(uniforms.uResB, textures[next]);
-  uniforms.uDir.value = dir;
-  uniforms.uProgress.value = 0;
-
-  rollTo(next);
-
-  gsap.to(uniforms.uProgress, {
-    value: 1,
-    duration: reduceMotion ? 0.01 : 1.15,
-    ease: 'power3.inOut',
-    onComplete: () => {
-      current = next;
-      uniforms.uTexA.value = textures[current];
-      setRes(uniforms.uResA, textures[current]);
-      uniforms.uProgress.value = 0;
-      animating = false;
-    },
-  });
-}
-
-const wrap = (i) => (i + CONFIG.projects.length) % CONFIG.projects.length;
-const next = () => goTo(wrap(current + 1), 1);
-const prev = () => goTo(wrap(current - 1), -1);
-
-/* =====================================================================
-   SCROLL HANDOFF — the hero scrolls natively; once the work section
-   fills the viewport the same gesture drives the slider instead.
-   Scrolling up from the first project hands control back to the page.
-   ===================================================================== */
-const scroller = document.querySelector('.js-scroll');
-const workSection = document.querySelector('.js-work');
-
-if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-scroller.scrollTop = 0;
-
-/* true once the work section is snapped to the viewport */
-const atWork = () => scroller.scrollTop >= workSection.offsetTop - 4;
-
-scroller.addEventListener('scroll', () => {
-  document.body.classList.toggle('at-work', scroller.scrollTop > window.innerHeight * 0.4);
-  /* the page is still moving — drop any wheel delta so momentum from the
-     hero scroll doesn't spill over into a slide change on arrival */
-  wheelAcc = 0;
-}, { passive: true });
-
-document.querySelector('.js-to-top').addEventListener('click', (e) => {
-  e.preventDefault();
-  if (activePage) location.hash = '#work';
-  scroller.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
-});
-
-/* wheel */
-let wheelAcc = 0;
-window.addEventListener('wheel', (e) => {
-  if (gridOpen || activePage) return;
-  /* hero scrolls natively; so does scrolling up off the first project */
-  if (!atWork() || (e.deltaY < 0 && current === 0)) { wheelAcc = 0; return; }
-  e.preventDefault();
-  wheelAcc += e.deltaY;
-  if (Math.abs(wheelAcc) > 90 && !animating) {
-    wheelAcc > 0 ? next() : prev();
-    wheelAcc = 0;
-  }
-  if (animating) wheelAcc = 0;
-}, { passive: false });
-
-/* touch */
-let touchY = null;
-window.addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; }, { passive: true });
-window.addEventListener('touchmove', (e) => {
-  if (touchY === null || gridOpen || activePage) return;
-  const dy = touchY - e.touches[0].clientY;
-  if (!atWork()) return;
-  if (dy < 0 && current === 0) return;
-  e.preventDefault();
-  if (Math.abs(dy) > 55 && !animating) {
-    dy > 0 ? next() : prev();
-    touchY = e.touches[0].clientY;
-  }
-}, { passive: false });
-
-/* keys */
-window.addEventListener('keydown', (e) => {
-  if (!activePage && atWork()) {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next();
-    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') prev();
-  }
-  if (e.key === 'Escape') {
-    if (gridOpen) toggleGrid(false);
-    else if (activePage) location.hash = '#work';
-  }
-});
-
-/* mouse parallax */
-const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
-window.addEventListener('pointermove', (e) => {
-  mouse.tx = e.clientX / window.innerWidth - 0.5;
-  mouse.ty = -(e.clientY / window.innerHeight - 0.5);
-});
-
-/* ---- render loop ---- */
-function loop() {
-  if (!reduceMotion) {
-    mouse.x += (mouse.tx - mouse.x) * 0.05;
-    mouse.y += (mouse.ty - mouse.y) * 0.05;
-    uniforms.uMouse.value.set(mouse.x, mouse.y);
-  }
-  renderer.render(scene, camera);
-  requestAnimationFrame(loop);
-}
-loop();
-
-/* =====================================================================
-   GRID VIEW
-   ===================================================================== */
-const gridView = document.querySelector('.js-grid-view');
-const grid = document.querySelector('.js-grid');
-const viewToggle = document.querySelector('.js-view-toggle');
-let gridOpen = false;
-
-CONFIG.projects.forEach((p, i) => {
-  const fig = document.createElement('figure');
-  fig.innerHTML = `
-    <img src="${p.img}" alt="${p.title}" loading="lazy" />
-    <figcaption><span>${p.title}</span><span class="year">${p.year}</span></figcaption>`;
-  fig.addEventListener('click', () => {
-    toggleGrid(false);
-    goTo(i, i > current ? 1 : -1);
-  });
-  grid.appendChild(fig);
-});
-
-function toggleGrid(open) {
-  gridOpen = open;
-  gridView.classList.toggle('open', open);
-  viewToggle.setAttribute('aria-pressed', String(open));
-}
-viewToggle.addEventListener('click', () => toggleGrid(!gridOpen));
-
-/* =====================================================================
-   MOBILE MENU
-   ===================================================================== */
-const menuToggle = document.querySelector('.menu-toggle');
-const mobileMenu = document.querySelector('.js-mobile-menu');
-menuToggle.addEventListener('click', () => {
-  const open = menuToggle.getAttribute('aria-expanded') !== 'true';
-  menuToggle.setAttribute('aria-expanded', String(open));
-  mobileMenu.classList.toggle('open', open);
-});
-mobileMenu.querySelectorAll('a').forEach((a) =>
-  a.addEventListener('click', () => {
-    menuToggle.setAttribute('aria-expanded', 'false');
-    mobileMenu.classList.remove('open');
-  })
-);
-
-/* =====================================================================
-   PAGES — populate from CONFIG
-   ===================================================================== */
-(function buildAbout() {
-  const a = CONFIG.about;
-  document.querySelector('.js-about-headline').textContent = a.headline;
-  document.querySelector('.js-about-copy').innerHTML =
-    a.paragraphs.map((p) => `<p>${p}</p>`).join('');
-  const portrait = document.querySelector('.js-about-portrait');
-  portrait.src = a.portrait;
-  portrait.alt = `${CONFIG.name} — portrait`;
-  document.querySelector('.js-about-services').innerHTML =
-    a.services.map((s) => `<li>${s}</li>`).join('');
-  document.querySelector('.js-about-clients').innerHTML =
-    a.clients.map((c) => `<li>${c}</li>`).join('');
-  document.querySelector('.js-about-links').innerHTML =
-    a.links.map((l) => `<li><a href="${l.url}" target="_blank" rel="noopener">${l.label}</a></li>`).join('');
-  const email = document.querySelector('.js-about-email');
-  email.textContent = a.email;
-  email.href = `mailto:${a.email}`;
-})();
-
-/* =====================================================================
-   ROUTER — hash-based page overlay (#about)
-   ===================================================================== */
-const pages = document.querySelectorAll('.js-page');
-const navLinks = document.querySelectorAll('nav.desktop-nav a, .mobile-menu a');
-let activePage = null;
-
-function route() {
-  const hash = (location.hash || '#work').replace('#', '');
-  const target = hash === 'about' ? hash : null;
-
-  if (gridOpen && target) toggleGrid(false);
-  if (timeOpen && target) { timeOpen = false; timeDetail.classList.remove('show'); }
-
-  activePage = target;
-  document.body.classList.toggle('page-open', !!target);
-
-  pages.forEach((pg) => {
-    const open = pg.dataset.page === target;
-    pg.classList.toggle('open', open);
-    pg.setAttribute('aria-hidden', String(!open));
-    if (open) pg.scrollTop = 0;
-  });
-
-  navLinks.forEach((a) => {
-    const href = a.getAttribute('href') || '';
-    a.classList.toggle('active', href === '#' + (target || 'work'));
-  });
-}
-
-window.addEventListener('hashchange', route);
-route();
-</script>
-</body>
-</html>
+[...]
