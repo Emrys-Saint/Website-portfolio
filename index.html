@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Portfolio — Phase 1</title>
+<meta name="description" content="Multidisciplinary creative developer portfolio — WebGL project showcase." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Archivo+Black&family=Big+Shoulders+Display:wght@700&family=Oswald:wght@700&family=UnifrakturMaguntia&family=Amita:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #050505;
+    --fg: #ffffff;
+    --dim: rgba(255, 255, 255, 0.25);
+    --margin: clamp(16px, 2.5vw, 36px);
+    --label: 0.75rem; /* 12px */
+    --wordmark-img: url('images/inspiration/plains-of-heaven.jpg');
+    --font-display: 'Anton';
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Space Mono', ui-monospace, monospace;
+    font-size: 16px;
+    overflow: hidden;
+    height: 100%;
+  }
+
+  ::selection { background: #fff; color: #000; }
+
+  a { color: inherit; text-decoration: none; }
+  button { background: none; border: none; color: inherit; font: inherit; cursor: pointer; }
+
+  :focus-visible { outline: 1px solid #fff; outline-offset: 3px; }
+
+  .label {
+    font-size: var(--label);
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+    text-transform: none;
+  }
+
+  /* ---------- canvas ---------- */
+  canvas.stage {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    display: block;
+  }
+
+  /* ---------- hover swap (clip-path text roll) ---------- */
+  .swap {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+  }
+  .swap .swap-hover,
+  .swap .swap-text {
+    display: block;
+    transition: clip-path 0.55s cubic-bezier(0.76, 0, 0.24, 1),
+                transform 0.55s cubic-bezier(0.76, 0, 0.24, 1);
+    will-change: transform, clip-path;
+  }
+  .swap .swap-hover {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(35%);
+  }
+  .swap:hover .swap-hover,
+  .swap:focus-visible .swap-hover {
+    clip-path: inset(0 0 0% 0);
+    transform: translateY(0);
+  }
+  .swap:hover .swap-text,
+  .swap:focus-visible .swap-text {
+    clip-path: inset(100% 0 0 0);
+    transform: translateY(-35%);
+  }
+  .swap .swap-text { clip-path: inset(0 0 0 0); }
+
+  /* ---------- header ---------- */
+  header {
+    position: fixed;
+    z-index: 8;
+    inset: 0 0 auto 0;
+    top: clamp(18px, 2vw, 24px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--margin);
+    mix-blend-mode: exclusion;
+    pointer-events: none;
+    font-size: var(--label);
+  }
+  header > * { pointer-events: auto; }
+
+  .wordmark {
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    font-size: 0.85rem;
+  }
+
+  .header-meta {
+    display: flex;
+    gap: clamp(24px, 6vw, 90px);
+  }
+  .header-meta .dim { color: var(--dim); }
+
+  nav.desktop-nav { display: flex; gap: clamp(20px, 3vw, 38px); }
+
+  @media (max-width: 999px) {
+    .header-meta, nav.desktop-nav { display: none; }
+  }
+
+  /* mobile menu toggle */
+  .menu-toggle {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  @media (max-width: 999px) { .menu-toggle { display: flex; } }
+  .menu-toggle .lines { position: relative; width: 20px; height: 8px; }
+  .menu-toggle .lines::before,
+  .menu-toggle .lines::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: currentColor;
+    transition: transform 0.4s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+  .menu-toggle .lines::before { top: 0; }
+  .menu-toggle .lines::after { bottom: 0; }
+  .menu-toggle[aria-expanded="true"] .lines::before { transform: translateY(3px) rotate(45deg); }
+  .menu-toggle[aria-expanded="true"] .lines::after { transform: translateY(-3px) rotate(-45deg); }
+
+  .mobile-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 7;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 24px;
+    clip-path: inset(0 0 100% 0);
+    transition: clip-path 0.7s cubic-bezier(0.76, 0, 0.24, 1);
+    pointer-events: none;
+  }
+  .mobile-menu.open { clip-path: inset(0 0 0% 0); pointer-events: auto; }
+  .mobile-menu a { font-family: var(--font-display), sans-serif; font-size: 17vw; line-height: 1; text-transform: uppercase; }
+
+  /* ---------- project details (bottom left) ---------- */
+  .project-details {
+    position: fixed;
+    z-index: 6;
+    left: var(--margin);
+    bottom: clamp(20px, 3vh, 30px);
+    mix-blend-mode: exclusion;
+    pointer-events: none;
+    font-size: var(--label);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 60vw;
+  }
+  @media (max-width: 999px) {
+    .project-details { left: 0; right: 0; max-width: none; align-items: center; text-align: center; }
+  }
+  .line-roller {
+    position: relative;
+    height: 1.1rem;
+    overflow: hidden;
+  }
+  .line-roller .roll {
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+  }
+  .line-roller .roll > div {
+    height: 1.1rem;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+  @media (max-width: 999px) { .line-roller .roll > div { justify-content: center; } }
+  .line-roller.roles { color: var(--dim); }
+
+  /* ---------- counter (bottom right) ---------- */
+  .counter {
+    position: fixed;
+    z-index: 6;
+    right: calc(var(--margin) + 64px);
+    bottom: clamp(20px, 3vh, 30px);
+    mix-blend-mode: exclusion;
+    pointer-events: none;
+    display: flex;
+    gap: 14px;
+    font-size: var(--label);
+  }
+  @media (max-width: 999px) { .counter { display: none; } }
+  .counter .digit-roller {
+    position: relative;
+    height: 1.1rem;
+    overflow: hidden;
+    min-width: 1.2ch;
+    color: var(--dim);
+  }
+  .counter .digit-roller .roll { display: flex; flex-direction: column; align-items: center; will-change: transform; }
+  .counter .digit-roller .roll > div { height: 1.1rem; display: flex; align-items: center; }
+
+  /* ---------- view toggle ---------- */
+  .view-toggle {
+    position: fixed;
+    z-index: 6;
+    right: var(--margin);
+    bottom: clamp(16px, 3vh, 26px);
+    mix-blend-mode: exclusion;
+    width: 40px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  @media (max-width: 999px) { .view-toggle { display: none; } }
+  .view-toggle span {
+    width: 2px;
+    height: 10px;
+    background: currentColor;
+    transition: transform 0.45s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+  .view-toggle:hover span:nth-child(1) { transform: translateX(-3px); }
+  .view-toggle:hover span:nth-child(4) { transform: translateX(3px); }
+  .view-toggle:hover span:nth-child(2) { transform: scaleY(0.6); }
+  .view-toggle:hover span:nth-child(3) { transform: scaleY(0.6); }
+
+  /* ---------- grid view ---------- */
+  .grid-view {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    background: rgba(5, 5, 5, 0.96);
+    overflow-y: auto;
+    padding: calc(var(--margin) + 70px) var(--margin) var(--margin);
+    clip-path: inset(0 0 100% 0);
+    transition: clip-path 0.7s cubic-bezier(0.76, 0, 0.24, 1);
+    pointer-events: none;
+  }
+  .grid-view.open { clip-path: inset(0 0 0% 0); pointer-events: auto; }
+  .grid-view .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: clamp(16px, 2vw, 28px);
+  }
+  .grid-view figure { cursor: pointer; }
+  .grid-view img {
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    display: block;
+    filter: grayscale(0.15);
+    transition: filter 0.4s ease, opacity 0.4s ease;
+  }
+  .grid-view figure:hover img { filter: grayscale(0); }
+  .grid-view figcaption {
+    margin-top: 10px;
+    font-size: var(--label);
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .grid-view figcaption .year { color: var(--dim); }
+
+  /* ---------- pages (About) ---------- */
+  .page {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    background: var(--bg);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: calc(var(--margin) + 84px) var(--margin) calc(var(--margin) * 2);
+    clip-path: inset(0 0 100% 0);
+    transition: clip-path 0.8s cubic-bezier(0.87, 0, 0.13, 1);
+    pointer-events: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.2) transparent;
+  }
+  .page.open { clip-path: inset(0 0 0% 0); pointer-events: auto; }
+
+  .page .headline {
+    font-family: var(--font-display), sans-serif;
+    font-size: clamp(64px, 13vw, 200px);
+    line-height: 0.92;
+    text-transform: uppercase;
+    letter-spacing: 0.005em;
+    max-width: 12ch;
+  }
+  .page .kicker {
+    font-size: var(--label);
+    color: var(--dim);
+    margin-bottom: 18px;
+  }
+
+  /* staggered reveal inside pages */
+  .page .pv {
+    clip-path: inset(0 0 110% 0);
+    transform: translateY(24px);
+    transition: clip-path 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .page.open .pv { clip-path: inset(-10% 0 -10% 0); transform: translateY(0); }
+  .page.open .pv.p1 { transition-delay: 0.25s; }
+  .page.open .pv.p2 { transition-delay: 0.35s; }
+  .page.open .pv.p3 { transition-delay: 0.45s; }
+  .page.open .pv.p4 { transition-delay: 0.55s; }
+
+  /* about layout */
+  .about-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: clamp(28px, 5vw, 90px);
+    margin-top: clamp(32px, 6vh, 72px);
+    align-items: start;
+  }
+  @media (max-width: 999px) { .about-grid { grid-template-columns: 1fr; } }
+  .about-grid .portrait {
+    width: 100%;
+    max-width: 460px;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    display: block;
+    filter: grayscale(1) contrast(1.05);
+  }
+  .about-copy p {
+    font-size: 0.9rem;
+    line-height: 1.7;
+    max-width: 52ch;
+  }
+  .about-copy p + p { margin-top: 1.2em; }
+
+  .about-lists {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: clamp(24px, 4vw, 64px);
+    margin-top: clamp(40px, 8vh, 96px);
+    font-size: var(--label);
+  }
+  .about-lists h2 {
+    font-size: var(--label);
+    font-weight: 400;
+    color: var(--dim);
+    margin-bottom: 14px;
+  }
+  .about-lists li { list-style: none; line-height: 2; }
+  .about-lists a { border-bottom: 1px solid rgba(255,255,255,0.25); transition: border-color 0.3s; }
+  .about-lists a:hover { border-color: #fff; }
+
+  .contact-line {
+    margin-top: clamp(48px, 10vh, 120px);
+  }
+  .contact-line a {
+    font-family: var(--font-display), sans-serif;
+    font-size: clamp(34px, 7vw, 104px);
+    line-height: 1;
+    text-transform: uppercase;
+    border-bottom: 2px solid rgba(255,255,255,0.25);
+    transition: border-color 0.3s;
+  }
+  .contact-line a:hover { border-color: #fff; }
+
+  /* hide slider UI while a page or menu covers it */
+  .project-details, .counter, .view-toggle {
+    transition: opacity 0.4s ease;
+  }
+  body.page-open .project-details,
+  body.page-open .counter,
+  body.page-open .view-toggle,
+  body.page-open .time-detail { opacity: 0; pointer-events: none; }
+
+  /* nav active state */
+  nav.desktop-nav a.active .swap-text,
+  .mobile-menu a.active { color: var(--dim); }
+
+  /* ---------- big clock reveal ---------- */
+  .time-detail {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 4;
+    padding: 0 var(--margin);
+    mix-blend-mode: exclusion;
+    pointer-events: none;
+    clip-path: inset(100% 0 0 0);
+    transition: clip-path 0.8s cubic-bezier(0.76, 0, 0.24, 1);
+    display: flex;
+    align-items: flex-end;
+    gap: 32px;
+  }
+  .time-detail.show { clip-path: inset(0% 0 0 0); }
+  @media (max-width: 999px) { .time-detail { display: none; } }
+  .time-detail .big {
+    font-family: var(--font-display), sans-serif;
+    font-size: clamp(140px, 27vw, 400px);
+    line-height: 0.85;
+    letter-spacing: -0.01em;
+  }
+  .time-detail .side {
+    padding-bottom: 2.5vw;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: var(--label);
+  }
+  .time-detail .side .msg { color: var(--dim); max-width: 220px; }
+
+  /* ---------- intro ---------- */
+  .intro {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    font-size: var(--label);
+    transition: clip-path 1s cubic-bezier(0.87, 0, 0.13, 1);
+  }
+  .intro.done { clip-path: inset(0 0 100% 0); pointer-events: none; }
+  .intro .counter-num {
+    position: absolute;
+    bottom: var(--margin);
+    right: var(--margin);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* EMRYS wordmark with painting clipped inside the letters —
+     shared by the initial loading screen and the Home page */
+  .emrys-wordmark {
+    font-family: var(--font-display), sans-serif;
+    font-size: clamp(64px, 16vw, 300px);
+    line-height: 1.2;
+    padding-bottom: 0.15em;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+    background: #000 var(--wordmark-img) center/cover no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* ---------- home page ---------- */
+  .page-home {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .painting-caption {
+    font-size: var(--label);
+    color: var(--dim);
+    letter-spacing: 0.02em;
+    text-align: center;
+  }
+
+  /* ---------- reveal helpers ---------- */
+  .rv {
+    clip-path: inset(0 0 110% 0);
+    transform: translateY(40%);
+    transition: clip-path 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  body.ready .rv { clip-path: inset(-10% 0 -10% 0); transform: translateY(0); }
+  body.ready .rv.d1 { transition-delay: 0.08s; }
+  body.ready .rv.d2 { transition-delay: 0.16s; }
+  body.ready .rv.d3 { transition-delay: 0.24s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- WebGL stage -->
+  <canvas class="stage js-canvas" aria-label="Project showcase"></canvas>
+
+  <!-- Header -->
+  <header>
+    <a href="#home" class="wordmark swap rv" aria-label="Home">
+      <span class="swap-hover" aria-hidden="true">"EMRYS"</span>
+      <span class="swap-text">"EMRYS"</span>
+    </a>
+
+    <div class="header-meta label">
+      <button class="swap rv d1 js-time-btn" aria-label="Show local time">
+        <span class="swap-hover" aria-hidden="true">CLOSEd</span>
+        <span class="swap-text js-clock">--:--</span>
+      </button>
+      <div class="dim rv d2"><span class="js-date">--</span> · <span class="js-tzcity">--</span></div>
+    </div>
+
+    <nav class="desktop-nav label" aria-label="Primary">
+      <a href="#about" class="swap rv d3">
+        <span class="swap-hover" aria-hidden="true">About</span>
+        <span class="swap-text">About</span>
+      </a>
+    </nav>
+
+    <button class="menu-toggle" aria-expanded="false" aria-label="Menu">
+      <span class="lines"></span>
+    </button>
+  </header>
+
+  <!-- Mobile menu -->
+  <div class="mobile-menu js-mobile-menu">
+    <a href="#about">About</a>
+  </div>
+
+  <!-- Project details -->
+  <div class="project-details label">
+    <div class="line-roller titles rv d2"><div class="roll js-title-roll"></div></div>
+    <div class="line-roller roles rv d3"><div class="roll js-role-roll"></div></div>
+  </div>
+
+  <!-- Counter -->
+  <div class="counter label rv d3">
+    <div class="digit-roller"><div class="roll js-index-roll"></div></div>
+    <div class="js-total">0</div>
+  </div>
+
+  <!-- View toggle -->
+  <button class="view-toggle rv d3 js-view-toggle" aria-label="Toggle grid view" aria-pressed="false">
+    <span></span><span></span><span></span><span></span>
+  </button>
+
+  <!-- Grid view -->
+  <div class="grid-view js-grid-view" role="dialog" aria-label="All projects">
+    <div class="grid js-grid"></div>
+  </div>
+
+  <!-- Home page -->
+  <section class="page page-home js-page" id="page-home" data-page="home" aria-label="Home">
+    <div class="emrys-wordmark">"EMRYS"</div>
+    <p class="painting-caption js-painting-caption">--</p>
+  </section>
+
+  <!-- About page -->
+  <section class="page js-page" id="page-about" data-page="about" aria-label="About">
+    <p class="kicker pv">About</p>
+    <h1 class="headline pv p1 js-about-headline"></h1>
+    <div class="about-grid">
+      <div class="about-copy pv p2 js-about-copy"></div>
+      <img class="portrait pv p2 js-about-portrait" alt="Portrait" />
+    </div>
+    <div class="about-lists pv p3">
+      <div>
+        <h2>Services</h2>
+        <ul class="js-about-services"></ul>
+      </div>
+      <div>
+        <h2>Selected clients</h2>
+        <ul class="js-about-clients"></ul>
+      </div>
+      <div>
+        <h2>Elsewhere</h2>
+        <ul class="js-about-links"></ul>
+      </div>
+    </div>
+    <div class="contact-line pv p4">
+      <a class="js-about-email" href="#">email</a>
+    </div>
+  </section>
+
+  <!-- Big clock -->
+  <div class="time-detail js-time-detail" aria-hidden="true">
+    <div class="big js-big-time">00:00</div>
+    <div class="side">
+      <div class="js-big-sec">:00</div>
+      <div class="js-big-ampm">AM</div>
+      <div class="msg">Probably awake — a good moment to say hello.</div>
+    </div>
+  </div>
+
+  <!-- Intro -->
+  <div class="intro js-intro">
+    <div class="emrys-wordmark">"EMRYS"</div>
+    <p class="painting-caption js-painting-caption">--</p>
+    <div class="counter-num js-intro-num">0</div>
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+/* =====================================================================
+   CONFIG — swap this for your own identity and projects.
+   Everything below renders from this object.
+   ===================================================================== */
+const CONFIG = {
+  name: 'EMRYS',
+  wordmarkImages: [
+    { img: 'images/inspiration/plains-of-heaven.jpg', title: 'The Plains of Heaven', artist: 'John Martin', year: '1851–53' },
+    { img: 'images/inspiration/Belshazzar_Feast_john_martin.jpg', title: 'Belshazzar\'s Feast', artist: 'John Martin', year: '1820' },
+    { img: 'images/inspiration/last-judgement.jpg', title: 'The Last Judgement', artist: 'John Martin', year: '1853' },
+    { img: 'images/inspiration/great-day-of-his-wrath.jpg', title: 'The Great Day of His Wrath', artist: 'John Martin', year: '1851–53' },
+    { img: 'images/inspiration/Destruction_of_Pompeii_and_Herculaneum.jpg', title: 'The Destruction of Pompeii and Herculaneum', artist: 'John Martin', year: '1822' },
+    { img: 'images/inspiration/Claude_Monet_-_Reflections_of_Clouds_on_the_Water-Lily_Pond.jpg', title: 'Reflections of Clouds on the Water-Lily Pond', artist: 'Claude Monet', year: '1920' },
+    { img: 'images/inspiration/Saint_Jerome_Writing-Caravaggio_(1605-6).jpg', title: 'Saint Jerome Writing', artist: 'Caravaggio', year: '1605–06' },
+    { img: 'images/inspiration/Caravaggio_-_Giuditta_e_Oloferne_(ca._1599).jpg', title: 'Judith Beheading Holofernes', artist: 'Caravaggio', year: 'c. 1599' },
+    { img: 'images/inspiration/La_Liberté_guidant_le_peuple_-_Eugène_Delacroix_-_Musée_du_Louvre_Peintures_RF_129_-_après_restauration_2024.jpg', title: 'Liberty Leading the People', artist: 'Eugène Delacroix', year: '1830' },
+    { img: 'images/inspiration/Paolo_Veronese_008.jpg', title: 'The Wedding Feast at Cana', artist: 'Paolo Veronese', year: '1563' },
+  ],
+  displayFonts: ['Anton', 'Bebas Neue', 'Archivo Black', 'Big Shoulders Display', 'Oswald', 'UnifrakturMaguntia', 'Amita'],
+  about: {
+    headline: 'Creative developer working across design, motion & code',
+    paragraphs: [
+      'EMRYS is an independent multidisciplinary creative building digital experiences for the web. Equal parts designer and engineer — the kind of work where the idea, the motion and the implementation come from the same pair of hands.',
+      'Currently collaborating with studios, startups and independents on portfolio sites, campaign pages and interactive experiences. Available for select projects.',
+    ],
+    portrait: 'https://picsum.photos/seed/portrait/900/1125',
+    services: ['Creative direction', 'Interaction design', 'Motion', 'WebGL / creative dev', 'Front-end development'],
+    clients: ['Placeholder Studio', 'Northline', 'Atelier Void', 'Signal & Sons', 'Common Object'],
+    links: [
+      { label: 'Instagram', url: 'https://www.instagram.com/flawlessactor/' },
+      { label: 'X / Twitter', url: '#' },
+      { label: 'GitHub', url: '#' },
+      { label: 'Read.cv', url: '#' },
+    ],
+    email: 'hello@example.com',
+  },
+  projects: [
+    { title: 'Terra Firma',  year: '2025', role: 'Motion, Development',  img: 'https://picsum.photos/seed/terra/1600/1067' },
+    { title: 'North Signal', year: '2024', role: 'Design, Development',  img: 'https://picsum.photos/seed/north/1600/1067' },
+    { title: 'Field Notes',  year: '2024', role: 'Motion, Development',  img: 'https://picsum.photos/seed/field/1600/1067' },
+    { title: 'Low Orbit',    year: '2023', role: 'Design, Motion',       img: 'https://picsum.photos/seed/orbit/1600/1067' },
+    { title: 'Quiet Hours',  year: '2023', role: 'Development',          img: 'https://picsum.photos/seed/quiet/1600/1067' },
+  ],
+};
+
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* pick a random painting for the EMRYS wordmark on every load.
+   images/inspiration/manifest.json (regenerated by generate-manifest.mjs)
+   wins when reachable, so new paintings dropped into that folder show up
+   without editing this file — CONFIG.wordmarkImages is the file:// fallback. */
+(async function pickWordmark() {
+  let images = CONFIG.wordmarkImages;
+  try {
+    const res = await fetch('./images/inspiration/manifest.json', { cache: 'no-cache' });
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    if (Array.isArray(data) && data.length) images = data;
+  } catch {}
+
+  const wordmark = images[Math.floor(Math.random() * images.length)];
+  document.documentElement.style.setProperty('--wordmark-img', `url('${wordmark.img}')`);
+  const caption = [wordmark.title, [wordmark.artist, wordmark.year].filter(Boolean).join(', ')]
+    .filter(Boolean)
+    .join(' — ');
+  document.querySelectorAll('.js-painting-caption').forEach((el) => { el.textContent = caption; });
+})();
+
+/* pick a random display font for headlines on every load */
+const displayFont = CONFIG.displayFonts[Math.floor(Math.random() * CONFIG.displayFonts.length)];
+document.documentElement.style.setProperty('--font-display', `'${displayFont}'`);
+
+/* =====================================================================
+   CLOCK — local time derived from the visitor's own timezone
+   ===================================================================== */
+const clockEl = document.querySelector('.js-clock');
+const dateEl = document.querySelector('.js-date');
+const tzCityEl = document.querySelector('.js-tzcity');
+const bigTime = document.querySelector('.js-big-time');
+const bigSec = document.querySelector('.js-big-sec');
+const bigAmPm = document.querySelector('.js-big-ampm');
+
+const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'ET';
+tzCityEl.textContent = tz.split('/').pop().replace(/_/g, ' ');
+
+function tickClock() {
+  const now = new Date();
+  let h = now.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  const tzShort = new Intl.DateTimeFormat('en', { timeZoneName: 'short' })
+    .formatToParts(now).find(p => p.type === 'timeZoneName')?.value || '';
+  clockEl.textContent = `${h}:${m}${ampm} ${tzShort}`;
+  dateEl.textContent = now.toLocaleDateString('en', { day: 'numeric', month: 'short' }) + ' ' + now.getFullYear();
+  bigTime.textContent = `${String(h).padStart(2, '0')}:${m}`;
+  bigSec.textContent = ':' + s;
+  bigAmPm.textContent = ampm;
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* big clock hover */
+const timeBtn = document.querySelector('.js-time-btn');
+const timeDetail = document.querySelector('.js-time-detail');
+let timeOpen = false;
+timeBtn.addEventListener('click', () => {
+  timeOpen = !timeOpen;
+  timeDetail.classList.toggle('show', timeOpen);
+});
+
+/* =====================================================================
+   ROLLERS — project title / role / index lists
+   ===================================================================== */
+const titleRoll = document.querySelector('.js-title-roll');
+const roleRoll = document.querySelector('.js-role-roll');
+const indexRoll = document.querySelector('.js-index-roll');
+document.querySelector('.js-total').textContent = String(CONFIG.projects.length).padStart(2, '0');
+
+CONFIG.projects.forEach((p, i) => {
+  titleRoll.insertAdjacentHTML('beforeend', `<div>${p.title} — ${p.year}</div>`);
+  roleRoll.insertAdjacentHTML('beforeend', `<div>${p.role}</div>`);
+  indexRoll.insertAdjacentHTML('beforeend', `<div>${String(i + 1).padStart(2, '0')}</div>`);
+});
+
+function rollTo(index) {
+  const h = titleRoll.children[0].offsetHeight;
+  const opts = { duration: reduceMotion ? 0 : 0.8, ease: 'power3.inOut' };
+  gsap.to(titleRoll, { y: -index * h, ...opts });
+  gsap.to(roleRoll, { y: -index * h, ...opts });
+  gsap.to(indexRoll, { y: -index * h, ...opts });
+}
+
+/* =====================================================================
+   WEBGL SLIDER
+   ===================================================================== */
+const canvas = document.querySelector('.js-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x050505, 1);
+
+const scene = new THREE.Scene();
+let camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+camera.position.z = 1;
+
+const vert = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+const frag = `
+  precision highp float;
+  varying vec2 vUv;
+  uniform sampler2D uTexA;
+  uniform sampler2D uTexB;
+  uniform vec2 uResA;
+  uniform vec2 uResB;
+  uniform vec2 uPlane;
+  uniform float uProgress; /* 0 -> 1 */
+  uniform float uDir;      /* +1 next, -1 prev */
+  uniform vec2 uMouse;     /* -0.5..0.5 parallax */
+
+  vec2 coverUV(vec2 uv, vec2 plane, vec2 img) {
+    float planeR = plane.x / plane.y;
+    float imgR = img.x / img.y;
+    vec2 scale = (planeR > imgR)
+      ? vec2(1.0, imgR / planeR)
+      : vec2(planeR / imgR, 1.0);
+    return (uv - 0.5) * scale + 0.5;
+  }
+
+  vec3 rgbShift(sampler2D tex, vec2 uv, float amt) {
+    float r = texture2D(tex, uv + vec2(0.0,  amt)).r;
+    float g = texture2D(tex, uv).g;
+    float b = texture2D(tex, uv - vec2(0.0,  amt)).b;
+    return vec3(r, g, b);
+  }
+
+  void main() {
+    float p = uProgress;
+    float vel = sin(p * 3.14159); /* peak mid-transition */
+
+    vec2 par = uMouse * 0.03;
+
+    vec2 uvA = coverUV(vUv, uPlane, uResA);
+    vec2 uvB = coverUV(vUv, uPlane, uResB);
+
+    /* zoom breathing: A settles at rest, pushes in as it leaves;
+       B arrives slightly zoomed and settles */
+    uvA = (uvA - 0.5) / (1.0 + 0.10 * p) + 0.5;
+    uvB = (uvB - 0.5) / (1.12 - 0.12 * p) + 0.5;
+
+    /* directional slide */
+    uvA.y -= uDir * 0.28 * p;
+    uvB.y += uDir * 0.28 * (1.0 - p);
+
+    uvA += par;
+    uvB += par;
+
+    float shift = vel * 0.012;
+    vec3 a = rgbShift(uTexA, uvA, shift);
+    vec3 b = rgbShift(uTexB, uvB, shift);
+
+    float m = smoothstep(0.30, 0.70, p);
+    vec3 col = mix(a, b, m);
+
+    /* subtle dim at peak velocity, like a shutter */
+    col *= 1.0 - vel * 0.12;
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
+const uniforms = {
+  uTexA: { value: null },
+  uTexB: { value: null },
+  uResA: { value: new THREE.Vector2(1, 1) },
+  uResB: { value: new THREE.Vector2(1, 1) },
+  uPlane: { value: new THREE.Vector2(1, 1) },
+  uProgress: { value: 0 },
+  uDir: { value: 1 },
+  uMouse: { value: new THREE.Vector2(0, 0) },
+};
+
+const plane = new THREE.Mesh(
+  new THREE.PlaneGeometry(1, 1),
+  new THREE.ShaderMaterial({ uniforms, vertexShader: vert, fragmentShader: frag })
+);
+scene.add(plane);
+
+/* ---- sizing ---- */
+function planeSize() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const isMobile = w < 1000;
+  const pw = isMobile ? w * 0.88 : Math.min(w * 0.56, 980);
+  const ph = Math.min(pw * (2 / 3), h * 0.68);
+  return { pw: ph * 1.5 > pw ? pw : ph * 1.5, ph };
+}
+
+function resize() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.left = -w / 2; camera.right = w / 2;
+  camera.top = h / 2; camera.bottom = -h / 2;
+  camera.updateProjectionMatrix();
+  const { pw, ph } = planeSize();
+  plane.scale.set(pw, ph, 1);
+  uniforms.uPlane.value.set(pw, ph);
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ---- textures ---- */
+const textures = [];
+const intro = document.querySelector('.js-intro');
+const introNum = document.querySelector('.js-intro-num');
+
+const manager = new THREE.LoadingManager();
+const loader = new THREE.TextureLoader(manager);
+loader.setCrossOrigin('anonymous');
+
+const shown = { v: 0 };
+manager.onProgress = (_url, loaded, total) => {
+  gsap.to(shown, {
+    v: Math.round((loaded / total) * 100),
+    duration: 0.4,
+    onUpdate: () => { introNum.textContent = Math.round(shown.v); },
+  });
+};
+
+CONFIG.projects.forEach((p, i) => {
+  textures[i] = loader.load(p.img, (t) => {
+    t.minFilter = THREE.LinearFilter;
+    t.generateMipmaps = false;
+  });
+});
+
+manager.onLoad = () => {
+  uniforms.uTexA.value = textures[0];
+  uniforms.uTexB.value = textures[0];
+  const img0 = textures[0].image;
+  uniforms.uResA.value.set(img0.width, img0.height);
+  uniforms.uResB.value.set(img0.width, img0.height);
+
+  gsap.to(shown, {
+    v: 100,
+    duration: 0.3,
+    onUpdate: () => { introNum.textContent = Math.round(shown.v); },
+    onComplete: () => {
+      setTimeout(() => {
+        intro.classList.add('done');
+        document.body.classList.add('ready');
+      }, reduceMotion ? 0 : 250);
+    },
+  });
+};
+
+manager.onError = (url) => {
+  console.warn('Failed to load', url);
+  intro.classList.add('done');
+  document.body.classList.add('ready');
+};
+
+/* ---- slide logic ---- */
+let current = 0;
+let animating = false;
+
+function setRes(uniform, tex) {
+  if (tex.image) uniform.value.set(tex.image.width, tex.image.height);
+}
+
+function goTo(next, dir) {
+  if (animating || next === current) return;
+  animating = true;
+
+  uniforms.uTexA.value = textures[current];
+  setRes(uniforms.uResA, textures[current]);
+  uniforms.uTexB.value = textures[next];
+  setRes(uniforms.uResB, textures[next]);
+  uniforms.uDir.value = dir;
+  uniforms.uProgress.value = 0;
+
+  rollTo(next);
+
+  gsap.to(uniforms.uProgress, {
+    value: 1,
+    duration: reduceMotion ? 0.01 : 1.15,
+    ease: 'power3.inOut',
+    onComplete: () => {
+      current = next;
+      uniforms.uTexA.value = textures[current];
+      setRes(uniforms.uResA, textures[current]);
+      uniforms.uProgress.value = 0;
+      animating = false;
+    },
+  });
+}
+
+const wrap = (i) => (i + CONFIG.projects.length) % CONFIG.projects.length;
+const next = () => goTo(wrap(current + 1), 1);
+const prev = () => goTo(wrap(current - 1), -1);
+
+/* wheel */
+let wheelAcc = 0;
+window.addEventListener('wheel', (e) => {
+  if (gridOpen || activePage) return;
+  wheelAcc += e.deltaY;
+  if (Math.abs(wheelAcc) > 90 && !animating) {
+    wheelAcc > 0 ? next() : prev();
+    wheelAcc = 0;
+  }
+  if (animating) wheelAcc = 0;
+}, { passive: true });
+
+/* touch */
+let touchY = null;
+window.addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; }, { passive: true });
+window.addEventListener('touchmove', (e) => {
+  if (touchY === null || gridOpen || activePage) return;
+  const dy = touchY - e.touches[0].clientY;
+  if (Math.abs(dy) > 55 && !animating) {
+    dy > 0 ? next() : prev();
+    touchY = e.touches[0].clientY;
+  }
+}, { passive: true });
+
+/* keys */
+window.addEventListener('keydown', (e) => {
+  if (!activePage) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next();
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') prev();
+  }
+  if (e.key === 'Escape') {
+    if (gridOpen) toggleGrid(false);
+    else if (activePage) location.hash = '#work';
+  }
+});
+
+/* mouse parallax */
+const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+window.addEventListener('pointermove', (e) => {
+  mouse.tx = e.clientX / window.innerWidth - 0.5;
+  mouse.ty = -(e.clientY / window.innerHeight - 0.5);
+});
+
+/* ---- render loop ---- */
+function loop() {
+  if (!reduceMotion) {
+    mouse.x += (mouse.tx - mouse.x) * 0.05;
+    mouse.y += (mouse.ty - mouse.y) * 0.05;
+    uniforms.uMouse.value.set(mouse.x, mouse.y);
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* =====================================================================
+   GRID VIEW
+   ===================================================================== */
+const gridView = document.querySelector('.js-grid-view');
+const grid = document.querySelector('.js-grid');
+const viewToggle = document.querySelector('.js-view-toggle');
+let gridOpen = false;
+
+CONFIG.projects.forEach((p, i) => {
+  const fig = document.createElement('figure');
+  fig.innerHTML = `
+    <img src="${p.img}" alt="${p.title}" loading="lazy" />
+    <figcaption><span>${p.title}</span><span class="year">${p.year}</span></figcaption>`;
+  fig.addEventListener('click', () => {
+    toggleGrid(false);
+    goTo(i, i > current ? 1 : -1);
+  });
+  grid.appendChild(fig);
+});
+
+function toggleGrid(open) {
+  gridOpen = open;
+  gridView.classList.toggle('open', open);
+  viewToggle.setAttribute('aria-pressed', String(open));
+}
+viewToggle.addEventListener('click', () => toggleGrid(!gridOpen));
+
+/* =====================================================================
+   MOBILE MENU
+   ===================================================================== */
+const menuToggle = document.querySelector('.menu-toggle');
+const mobileMenu = document.querySelector('.js-mobile-menu');
+menuToggle.addEventListener('click', () => {
+  const open = menuToggle.getAttribute('aria-expanded') !== 'true';
+  menuToggle.setAttribute('aria-expanded', String(open));
+  mobileMenu.classList.toggle('open', open);
+});
+mobileMenu.querySelectorAll('a').forEach((a) =>
+  a.addEventListener('click', () => {
+    menuToggle.setAttribute('aria-expanded', 'false');
+    mobileMenu.classList.remove('open');
+  })
+);
+
+/* =====================================================================
+   PAGES — populate from CONFIG
+   ===================================================================== */
+(function buildAbout() {
+  const a = CONFIG.about;
+  document.querySelector('.js-about-headline').textContent = a.headline;
+  document.querySelector('.js-about-copy').innerHTML =
+    a.paragraphs.map((p) => `<p>${p}</p>`).join('');
+  const portrait = document.querySelector('.js-about-portrait');
+  portrait.src = a.portrait;
+  portrait.alt = `${CONFIG.name} — portrait`;
+  document.querySelector('.js-about-services').innerHTML =
+    a.services.map((s) => `<li>${s}</li>`).join('');
+  document.querySelector('.js-about-clients').innerHTML =
+    a.clients.map((c) => `<li>${c}</li>`).join('');
+  document.querySelector('.js-about-links').innerHTML =
+    a.links.map((l) => `<li><a href="${l.url}" target="_blank" rel="noopener">${l.label}</a></li>`).join('');
+  const email = document.querySelector('.js-about-email');
+  email.textContent = a.email;
+  email.href = `mailto:${a.email}`;
+})();
+
+/* =====================================================================
+   ROUTER — hash-based page views (#home / #about)
+   ===================================================================== */
+const pages = document.querySelectorAll('.js-page');
+const navLinks = document.querySelectorAll('nav.desktop-nav a, .mobile-menu a');
+let activePage = null;
+
+function route() {
+  const hash = (location.hash || '#work').replace('#', '');
+  const target = ['about', 'home'].includes(hash) ? hash : null;
+
+  if (gridOpen && target) toggleGrid(false);
+  if (timeOpen && target) { timeOpen = false; timeDetail.classList.remove('show'); }
+
+  activePage = target;
+  document.body.classList.toggle('page-open', !!target);
+
+  pages.forEach((pg) => {
+    const open = pg.dataset.page === target;
+    pg.classList.toggle('open', open);
+    pg.setAttribute('aria-hidden', String(!open));
+    if (open) pg.scrollTop = 0;
+  });
+
+  navLinks.forEach((a) => {
+    const href = a.getAttribute('href') || '';
+    a.classList.toggle('active', href === '#' + (target || 'work'));
+  });
+}
+
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>
