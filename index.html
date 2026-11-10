@@ -8,13 +8,12 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Archivo+Black&family=Big+Shoulders+Display:wght@700&family=Oswald:wght@700&family=UnifrakturMaguntia&family=Amita:wg[...]"
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Archivo+Black&family=Big+Shoulders+Display:wght@700&family=Oswald:wght@700&family=UnifrakturMaguntia&family=Amita:wght@400;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
   :root {
-    --bg: #050505;
+    --bg: #252525;
     --fg: #ffffff;
-    --dim: rgba(255, 255, 255, 0.25);
     --margin: clamp(16px, 2.5vw, 36px);
     --label: 0.75rem; /* 12px */
     /* set by pickWordmark() once a painting has decoded; until then the
@@ -104,7 +103,7 @@
     align-items: center;
     gap: 10px;
     font-size: var(--label);
-    color: var(--dim);
+    color: var(--fg);
     transition: opacity 0.4s ease;
   }
   .scroll-cue .bar {
@@ -179,7 +178,7 @@
     display: flex;
     gap: clamp(24px, 6vw, 90px);
   }
-  .header-meta .dim { color: var(--dim); }
+  .header-meta .dim { color: var(--fg); }
 
   nav.desktop-nav { display: flex; gap: clamp(20px, 3vw, 38px); }
 
@@ -263,7 +262,7 @@
     white-space: nowrap;
   }
   @media (max-width: 999px) { .line-roller .roll > div { justify-content: center; } }
-  .line-roller.roles { color: var(--dim); }
+  .line-roller.roles { color: var(--fg); }
 
   /* ---------- counter (bottom right) ---------- */
   .counter {
@@ -283,7 +282,7 @@
     height: 1.1rem;
     overflow: hidden;
     min-width: 1.2ch;
-    color: var(--dim);
+    color: var(--fg);
   }
   .counter .digit-roller .roll { display: flex; flex-direction: column; align-items: center; will-change: transform; }
   .counter .digit-roller .roll > div { height: 1.1rem; display: flex; align-items: center; }
@@ -349,7 +348,7 @@
     justify-content: space-between;
     gap: 12px;
   }
-  .grid-view figcaption .year { color: var(--dim); }
+  .grid-view figcaption .year { color: var(--fg); }
 
   /* ---------- pages (About) ---------- */
   .page {
@@ -378,7 +377,7 @@
   }
   .page .kicker {
     font-size: var(--label);
-    color: var(--dim);
+    color: var(--fg);
     margin-bottom: 18px;
   }
 
@@ -429,7 +428,7 @@
   .about-lists h2 {
     font-size: var(--label);
     font-weight: 400;
-    color: var(--dim);
+    color: var(--fg);
     margin-bottom: 14px;
   }
   .about-lists li { list-style: none; line-height: 2; }
@@ -467,7 +466,7 @@
 
   /* nav active state */
   nav.desktop-nav a.active .swap-text,
-  .mobile-menu a.active { color: var(--dim); }
+  .mobile-menu a.active { color: var(--fg); }
 
   /* ---------- big clock reveal ---------- */
   .time-detail {
@@ -498,14 +497,14 @@
     gap: 10px;
     font-size: var(--label);
   }
-  .time-detail .side .msg { color: var(--dim); max-width: 220px; }
+  .time-detail .side .msg { color: var(--fg); max-width: 220px; }
 
   /* ---------- intro ---------- */
   .intro {
     position: fixed;
     inset: 0;
     z-index: 99;
-    background: #000;
+    background: var(--bg);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -538,7 +537,7 @@
     transition: color 0.6s ease, -webkit-text-fill-color 0.6s ease;
   }
   body.wordmark-ready .emrys-wordmark {
-    background: #000 var(--wordmark-img) center/cover no-repeat;
+    background: #fff var(--wordmark-img) center/cover no-repeat;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -547,7 +546,7 @@
 
   .painting-caption {
     font-size: var(--label);
-    color: var(--dim);
+    color: var(--fg);
     letter-spacing: 0.02em;
     text-align: center;
   }
@@ -710,7 +709,7 @@ const CONFIG = {
      fetch works cross-origin.
 
      If a remote file 404s, the loader retries the same path locally, so a
-     half-finished migration degrades instead of blanking out the wordmark. */
+     half-finished migration degrades instead of blanking the wordmark. */
   assetBase: '',
 
   wordmarkImages: [
@@ -728,7 +727,7 @@ const CONFIG = {
   about: {
     headline: 'Creative developer working across design, motion & code',
     paragraphs: [
-      'EMRYS is an independent multidisciplinary creative building digital experiences for the web. Equal parts designer and engineer — the kind of work where the idea, the motion and the implementa[...]'
+      'EMRYS is an independent multidisciplinary creative building digital experiences for the web. Equal parts designer and engineer — the kind of work where the idea, the motion and the implementation come from the same pair of hands.',
       'Currently collaborating with studios, startups and independents on portfolio sites, campaign pages and interactive experiences. Available for select projects.',
     ],
     portrait: 'https://picsum.photos/seed/portrait/900/1125',
@@ -764,12 +763,18 @@ function assetUrls(path) {
   return [encodeURI(base + path), local];
 }
 
+/* `onload` fires when the bytes have arrived but BEFORE the JPEG is decoded
+   to a bitmap — that decode then happens synchronously the first time the
+   image is painted, freezing the main thread for a large file (these run up
+   to 11 MB) right as the intro counter is animating. decode() does that work
+   off the main thread and resolves only when the image is ready to paint. */
 function loadImage(src) {
+  const img = new Image();
+  img.src = src;
+  if (img.decode) return img.decode();
   return new Promise((resolve, reject) => {
-    const img = new Image();
     img.onload = () => resolve();
     img.onerror = () => reject(new Error(`could not load ${src}`));
-    img.src = src;
   });
 }
 
@@ -802,22 +807,9 @@ function loadImage(src) {
       continue;
     }
     document.documentElement.style.setProperty('--wordmark-img', `url("${src}")`);
-
-    // Explicit fallback: directly set background on wordmark elements
-    // for browsers that don't pick up the CSS custom property or background-clip.
-    try {
-      document.querySelectorAll('.emrys-wordmark').forEach((el) => {
-        el.style.backgroundImage = `url("${src}")`;
-        el.style.backgroundSize = 'cover';
-        el.style.backgroundPosition = 'center';
-        el.style.webkitBackgroundClip = 'text';
-        el.style.backgroundClip = 'text';
-        el.style.color = 'transparent';
-        el.style.webkitTextFillColor = 'transparent';
-      });
-    } catch (e) { /* ignore in very old browsers */ }
-
-    const caption = [painting.title, [painting.artist, painting.year].filter(Boolean).join(', ')].filter(Boolean).join(' — ');
+    const caption = [painting.title, [painting.artist, painting.year].filter(Boolean).join(', ')]
+      .filter(Boolean)
+      .join(' — ');
     document.querySelectorAll('.js-painting-caption').forEach((el) => { el.textContent = caption; });
     document.body.classList.add('wordmark-ready');
     return;
@@ -898,9 +890,17 @@ function rollTo(index) {
    WEBGL SLIDER
    ===================================================================== */
 const canvas = document.querySelector('.js-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+/* antialias off + a capped pixel ratio: this is a full-viewport shader
+   pass, so both are a direct multiplier on fragment-shader cost. The
+   rgbShift/parallax look doesn't need MSAA to read clean, and 1.5x is
+   indistinguishable from 2x on this content but noticeably cheaper on the
+   GPU (especially integrated/mobile ones). */
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setClearColor(0x050505, 1);
+/* declared here (not down by startLoop) so resize()'s `if (looping)` check
+   below is safe to call before the loading screen has finished */
+let looping = false;
 
 const scene = new THREE.Scene();
 let camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
@@ -1011,4 +1011,348 @@ function resize() {
   camera.left = -w / 2; camera.right = w / 2;
   camera.top = h / 2; camera.bottom = -h / 2;
   camera.updateProjectionMatrix();
-[...]
+  const { pw, ph } = planeSize();
+  plane.scale.set(pw, ph, 1);
+  uniforms.uPlane.value.set(pw, ph);
+  if (looping) scheduleFrame();
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* ---- textures ---- */
+const textures = [];
+const intro = document.querySelector('.js-intro');
+const introNum = document.querySelector('.js-intro-num');
+
+const manager = new THREE.LoadingManager();
+const loader = new THREE.TextureLoader(manager);
+loader.setCrossOrigin('anonymous');
+
+const shown = { v: 0 };
+/* onProgress fires once per finished file, so several 0.4s tweens can be in
+   flight at once. Without overwrite they all keep writing to shown.v on the
+   same frame and the number stutters and jumps backwards — overwrite:true
+   kills the in-flight one so each update continues from where it left off.
+   ease:'none' keeps it counting at a steady rate rather than easing out
+   between every file. */
+manager.onProgress = (_url, loaded, total) => {
+  gsap.to(shown, {
+    v: Math.round((loaded / total) * 100),
+    duration: 0.4,
+    ease: 'none',
+    overwrite: true,
+    onUpdate: () => { introNum.textContent = Math.round(shown.v); },
+  });
+};
+
+CONFIG.projects.forEach((p, i) => {
+  textures[i] = loader.load(p.img, (t) => {
+    t.minFilter = THREE.LinearFilter;
+    t.generateMipmaps = false;
+  });
+});
+
+manager.onLoad = async () => {
+  uniforms.uTexA.value = textures[0];
+  uniforms.uTexB.value = textures[0];
+  const img0 = textures[0].image;
+  uniforms.uResA.value.set(img0.width, img0.height);
+  uniforms.uResB.value.set(img0.width, img0.height);
+
+  /* onLoad means the bytes have arrived, not that the JPEG is decoded.
+     Without this, that decode happens synchronously on the main thread
+     the moment startLoop()'s first renderer.render() uploads the image to
+     the GPU — which lands squarely inside the intro wipe / hero reveal
+     animation below and shows up as a stutter. decode() does the work off
+     the main thread first, same fix as loadImage() uses for the wordmark. */
+  if (img0.decode) { try { await img0.decode(); } catch {} }
+
+  startLoop();
+
+  /* the rest of the slides only need to be decoded before the visitor
+     actually navigates to them, not before the loop starts — kick that off
+     in the background now so it's (usually) already done by the time
+     goTo() needs it, instead of blocking the main thread mid-transition. */
+  textures.forEach((t, i) => {
+    if (i !== 0 && t.image?.decode) t.image.decode().catch(() => {});
+  });
+
+  gsap.to(shown, {
+    v: 100,
+    duration: 0.3,
+    ease: 'none',
+    overwrite: true,
+    onUpdate: () => { introNum.textContent = Math.round(shown.v); },
+    onComplete: () => {
+      setTimeout(() => {
+        intro.classList.add('done');
+        document.body.classList.add('ready');
+      }, reduceMotion ? 0 : 250);
+    },
+  });
+};
+
+manager.onError = (url) => {
+  console.warn('Failed to load', url);
+  startLoop();
+  intro.classList.add('done');
+  document.body.classList.add('ready');
+};
+
+/* ---- slide logic ---- */
+let current = 0;
+let animating = false;
+
+function setRes(uniform, tex) {
+  if (tex.image) uniform.value.set(tex.image.width, tex.image.height);
+}
+
+function goTo(next, dir) {
+  if (animating || next === current) return;
+  animating = true;
+  scheduleFrame();
+
+  uniforms.uTexA.value = textures[current];
+  setRes(uniforms.uResA, textures[current]);
+  uniforms.uTexB.value = textures[next];
+  setRes(uniforms.uResB, textures[next]);
+  uniforms.uDir.value = dir;
+  uniforms.uProgress.value = 0;
+
+  rollTo(next);
+
+  gsap.to(uniforms.uProgress, {
+    value: 1,
+    duration: reduceMotion ? 0.01 : 1.15,
+    ease: 'power3.inOut',
+    onComplete: () => {
+      current = next;
+      uniforms.uTexA.value = textures[current];
+      setRes(uniforms.uResA, textures[current]);
+      uniforms.uProgress.value = 0;
+      animating = false;
+    },
+  });
+}
+
+const wrap = (i) => (i + CONFIG.projects.length) % CONFIG.projects.length;
+const next = () => goTo(wrap(current + 1), 1);
+const prev = () => goTo(wrap(current - 1), -1);
+
+/* =====================================================================
+   SCROLL HANDOFF — the hero scrolls natively; once the work section
+   fills the viewport the same gesture drives the slider instead.
+   Scrolling up from the first project hands control back to the page.
+   ===================================================================== */
+const scroller = document.querySelector('.js-scroll');
+const workSection = document.querySelector('.js-work');
+
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+scroller.scrollTop = 0;
+
+/* true once the work section is snapped to the viewport */
+const atWork = () => scroller.scrollTop >= workSection.offsetTop - 4;
+
+scroller.addEventListener('scroll', () => {
+  document.body.classList.toggle('at-work', scroller.scrollTop > window.innerHeight * 0.4);
+  /* the page is still moving — drop any wheel delta so momentum from the
+     hero scroll doesn't spill over into a slide change on arrival */
+  wheelAcc = 0;
+}, { passive: true });
+
+document.querySelector('.js-to-top').addEventListener('click', (e) => {
+  e.preventDefault();
+  if (activePage) location.hash = '#work';
+  scroller.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+});
+
+/* wheel */
+let wheelAcc = 0;
+window.addEventListener('wheel', (e) => {
+  if (gridOpen || activePage) return;
+  /* hero scrolls natively; so does scrolling up off the first project */
+  if (!atWork() || (e.deltaY < 0 && current === 0)) { wheelAcc = 0; return; }
+  e.preventDefault();
+  wheelAcc += e.deltaY;
+  if (Math.abs(wheelAcc) > 90 && !animating) {
+    wheelAcc > 0 ? next() : prev();
+    wheelAcc = 0;
+  }
+  if (animating) wheelAcc = 0;
+}, { passive: false });
+
+/* touch */
+let touchY = null;
+window.addEventListener('touchstart', (e) => { touchY = e.touches[0].clientY; }, { passive: true });
+window.addEventListener('touchmove', (e) => {
+  if (touchY === null || gridOpen || activePage) return;
+  const dy = touchY - e.touches[0].clientY;
+  if (!atWork()) return;
+  if (dy < 0 && current === 0) return;
+  e.preventDefault();
+  if (Math.abs(dy) > 55 && !animating) {
+    dy > 0 ? next() : prev();
+    touchY = e.touches[0].clientY;
+  }
+}, { passive: false });
+
+/* keys */
+window.addEventListener('keydown', (e) => {
+  if (!activePage && atWork()) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next();
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') prev();
+  }
+  if (e.key === 'Escape') {
+    if (gridOpen) toggleGrid(false);
+    else if (activePage) location.hash = '#work';
+  }
+});
+
+/* mouse parallax */
+const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+window.addEventListener('pointermove', (e) => {
+  mouse.tx = e.clientX / window.innerWidth - 0.5;
+  mouse.ty = -(e.clientY / window.innerHeight - 0.5);
+  if (looping) scheduleFrame();
+});
+
+/* ---- render loop ----
+   Renders on demand rather than forever at every display refresh: this
+   canvas is mostly a static image (parallax only moves it a few % of the
+   viewport), so once the mouse-follow has eased into place and no slide
+   transition is running there is nothing left to draw that differs from
+   the last frame. Sustaining 60-120fps of full-viewport shader work for a
+   picture that isn't changing is the single biggest avoidable GPU cost
+   here. scheduleFrame() is how anything that changes state (pointermove
+   above, resize(), goTo() below) asks for another frame. */
+let rafId = null;
+function scheduleFrame() {
+  if (rafId === null) rafId = requestAnimationFrame(loop);
+}
+
+function loop() {
+  rafId = null;
+  if (!reduceMotion) {
+    mouse.x += (mouse.tx - mouse.x) * 0.05;
+    mouse.y += (mouse.ty - mouse.y) * 0.05;
+    uniforms.uMouse.value.set(mouse.x, mouse.y);
+  }
+  renderer.render(scene, camera);
+
+  const stillEasing = !reduceMotion &&
+    (Math.abs(mouse.tx - mouse.x) > 0.0004 || Math.abs(mouse.ty - mouse.y) > 0.0004);
+  if (stillEasing || animating) scheduleFrame();
+}
+
+/* Started from manager.onLoad / onError rather than here. Rendering the
+   shader every frame while the intro covers the whole screen burns main
+   thread and GPU on pixels nobody can see, and it's competing with the
+   counter for exactly the frames the counter needs. Idempotent so the two
+   callers can't double-start it. */
+function startLoop() {
+  if (looping) return;
+  looping = true;
+  loop();
+}
+
+/* =====================================================================
+   GRID VIEW
+   ===================================================================== */
+const gridView = document.querySelector('.js-grid-view');
+const grid = document.querySelector('.js-grid');
+const viewToggle = document.querySelector('.js-view-toggle');
+let gridOpen = false;
+
+CONFIG.projects.forEach((p, i) => {
+  const fig = document.createElement('figure');
+  fig.innerHTML = `
+    <img src="${p.img}" alt="${p.title}" loading="lazy" />
+    <figcaption><span>${p.title}</span><span class="year">${p.year}</span></figcaption>`;
+  fig.addEventListener('click', () => {
+    toggleGrid(false);
+    goTo(i, i > current ? 1 : -1);
+  });
+  grid.appendChild(fig);
+});
+
+function toggleGrid(open) {
+  gridOpen = open;
+  gridView.classList.toggle('open', open);
+  viewToggle.setAttribute('aria-pressed', String(open));
+}
+viewToggle.addEventListener('click', () => toggleGrid(!gridOpen));
+
+/* =====================================================================
+   MOBILE MENU
+   ===================================================================== */
+const menuToggle = document.querySelector('.menu-toggle');
+const mobileMenu = document.querySelector('.js-mobile-menu');
+menuToggle.addEventListener('click', () => {
+  const open = menuToggle.getAttribute('aria-expanded') !== 'true';
+  menuToggle.setAttribute('aria-expanded', String(open));
+  mobileMenu.classList.toggle('open', open);
+});
+mobileMenu.querySelectorAll('a').forEach((a) =>
+  a.addEventListener('click', () => {
+    menuToggle.setAttribute('aria-expanded', 'false');
+    mobileMenu.classList.remove('open');
+  })
+);
+
+/* =====================================================================
+   PAGES — populate from CONFIG
+   ===================================================================== */
+(function buildAbout() {
+  const a = CONFIG.about;
+  document.querySelector('.js-about-headline').textContent = a.headline;
+  document.querySelector('.js-about-copy').innerHTML =
+    a.paragraphs.map((p) => `<p>${p}</p>`).join('');
+  const portrait = document.querySelector('.js-about-portrait');
+  portrait.src = a.portrait;
+  portrait.alt = `${CONFIG.name} — portrait`;
+  document.querySelector('.js-about-services').innerHTML =
+    a.services.map((s) => `<li>${s}</li>`).join('');
+  document.querySelector('.js-about-clients').innerHTML =
+    a.clients.map((c) => `<li>${c}</li>`).join('');
+  document.querySelector('.js-about-links').innerHTML =
+    a.links.map((l) => `<li><a href="${l.url}" target="_blank" rel="noopener">${l.label}</a></li>`).join('');
+  const email = document.querySelector('.js-about-email');
+  email.textContent = a.email;
+  email.href = `mailto:${a.email}`;
+})();
+
+/* =====================================================================
+   ROUTER — hash-based page overlay (#about)
+   ===================================================================== */
+const pages = document.querySelectorAll('.js-page');
+const navLinks = document.querySelectorAll('nav.desktop-nav a, .mobile-menu a');
+let activePage = null;
+
+function route() {
+  const hash = (location.hash || '#work').replace('#', '');
+  const target = hash === 'about' ? hash : null;
+
+  if (gridOpen && target) toggleGrid(false);
+  if (timeOpen && target) { timeOpen = false; timeDetail.classList.remove('show'); }
+
+  activePage = target;
+  document.body.classList.toggle('page-open', !!target);
+
+  pages.forEach((pg) => {
+    const open = pg.dataset.page === target;
+    pg.classList.toggle('open', open);
+    pg.setAttribute('aria-hidden', String(!open));
+    if (open) pg.scrollTop = 0;
+  });
+
+  navLinks.forEach((a) => {
+    const href = a.getAttribute('href') || '';
+    a.classList.toggle('active', href === '#' + (target || 'work'));
+  });
+}
+
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>
